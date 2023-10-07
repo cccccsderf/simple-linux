@@ -1,0 +1,24 @@
+{
+    "C_Cpp.errorSquiggles": "disabled",
+    "files.associations": {
+        "debug.h": "c",
+        "interrupt.h": "c",
+        "stdint.h": "c",
+        "sync.h": "c",
+        "timer.h": "c",
+        "ioqueue.h": "c",
+        "keyboard.h": "c",
+        "string.h": "c",
+        "thread.h": "c",
+        "PROCESS.C": "cpp",
+        "process.h": "c",
+        "stdio.h": "c",
+        "syscall-init.h": "c",
+        "console.h": "c",
+        "con": "c",
+        "global.h": "c",
+        "stdio-kernel.h": "c",
+        "list.h": "c",
+        "file.h": "c"
+    }
+}

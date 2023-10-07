@@ -1,0 +1,116 @@
+%include "boot.inc"
+SECTION MBR vstart=0x7c00
+
+	mov ax,cs
+	mov ds,ax
+	mov es,ax
+	mov ss,ax
+	mov fs,ax
+	mov sp,0x7c00
+	mov ax,0xb800
+	mov gs,ax
+
+	mov ax,0600h
+	mov bx,0700h
+	mov cx,0
+	mov dx,184fh
+
+	int 10h
+
+	mov byte [gs:0x00],'L'
+	mov byte [gs:0x01],0xA4
+	
+	mov byte [gs:0x02],'O'
+	mov byte [gs:0x03],0xA4
+
+	mov byte [gs:0x04],'V'
+	mov byte [gs:0x05],0xA4
+
+	mov byte [gs:0x06],'E'
+	mov byte [gs:0x07],0xA4
+	
+	mov byte [gs:0x08],' '
+	mov byte [gs:0x09],0xA4
+
+	mov byte [gs:0x0A],'Y'
+	mov byte [gs:0x0B],0xA4
+
+	mov byte [gs:0x0C],'O'
+	mov byte [gs:0x0D],0xA4
+
+	mov byte [gs:0x0E],'U'
+	mov byte [gs:0x0F],0xA4
+
+	mov byte [gs:0x10],'!'
+	mov byte [gs:0x11],0xA4
+
+	;设置需要操作的起始扇区LBA地址
+	mov eax,LOADER_START_SECTOR
+	mov bx,LOADER_BASE_ADDR
+	mov cx,1	;待写入的扇区数
+	call rd_disk_m_16	;读取硬盘数据
+	
+	jmp LOADER_BASE_ADDR
+
+rd_disk_m_16:
+	mov esi,eax 	;备份eax
+	mov di,cx	;备份cx
+
+	;第一步：往sector count寄存器中写入待操作的扇区数
+	mov dx,0x1f2
+	mov al,cl
+	out dx,al
+
+	mov eax,esi	;恢复eax
+	;第二步：LBA寄存器写入扇区地址的低24位
+	mov dx,0x1f3
+	out dx,al	;LBA的0-7位
+
+	mov cl,8
+	shr eax,cl
+	mov dx,0x1f4
+	out dx,al	;LBA的8-15位
+
+	shr eax,cl
+	mov dx,0x1f5
+	out dx,al	;LBA的16-23位
+
+	;第三步：往device寄存器中写入LBA的24-27位，第六位为1表示LBA模式，0表示CHS模式
+	;第四位选择操作的硬盘（master或者slave盘）
+	shr eax,cl
+	and al,0x0f	;0000 0000 and 0000 1111 = 0000 0000
+	or  al,0xe0	;0000 0000 or  1110 0000 = 1110 0000
+	mov dx,0x1f6	
+	out dx,al
+	
+	;第四步：往command寄存器写入操作命令：读硬盘还是写硬盘
+	mov dx,0x1f7
+	mov al,0x20
+	out dx,al
+
+	;第五步：往status寄存器，判断工作是否完成   检测硬盘状态
+.not_ready:
+	nop 
+	in  al,dx
+	and al,0x88
+	cmp al,0x08	;第四位为1表示硬盘已经准备好数据，第7为为1表示硬盘忙
+	jnz .not_ready	;若未准备好，继续等待
+
+	;第六步：从data寄存器读取数据
+	mov ax,di
+	mov dx,256
+	mul dx
+	mov cx,ax 	;di为要读取的扇区数，一个扇区有512个字节，每次读入一个字节
+			;共需要di*512/2次，所以di*256
+	mov dx,0x1f0
+.go_on_read:
+	in  ax,dx
+	mov [bx],ax
+	add bx,2
+	loop .go_on_read
+	ret
+
+times 510-($-$$) db 0
+db 0x55,0xaa
+	
+	
